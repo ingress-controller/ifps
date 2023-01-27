@@ -1,0 +1,50 @@
+version: '3'
+
+services:
+  ipfs:
+    container_name: ipfs
+    image: go:ipfs
+    ports:
+      - "4001:4001"
+      - "5001:5001"
+      - "8080:8080"
+    volumes:
+      - ipfs_data:/data/ipfs
+      - ipfs_staging:/export
+
+  cluster:
+    container_name: cluster
+    image: cluster:ipfs
+    depends_on:
+      - ipfs
+    environment:
+      CLUSTER_SECRET: 1aebe6d1ff52d96241e00d1abbd1be0743e3ccd0e3f8a05e3c8dd2bbbddb7b93
+      IPFS_API: /ip4/0.0.0.0/tcp/5001
+      CLUSTER_IPFSHTTP_NODEMULTIADDRESS: /dns4/ipfs/tcp/5001
+      CLUSTER_CRDT_TRUSTEDPEERS: '*' # Trust all peers in Cluster
+      CLUSTER_RESTAPI_HTTPLISTENMULTIADDRESS: /ip4/0.0.0.0/tcp/9094 # Expose API
+      CLUSTER_MONITORPINGINTERVAL: 2s # Speed up peer discovery
+      CLUSTER_RESTAPI_BASICAUTHCREDENTIALS: "user:pass"
+    ports:
+      - "9094:9094"
+      - "9095:9095"
+      - "9096:9096"
+    volumes:
+      - cluster_data:/data/ipfs-cluster
+
+  proxy:
+    container_name: proxy
+    image: proxy:ipfs
+    volumes:
+      - proxy_data:/etc/nginx
+    ports:
+      - "8000:80"
+    depends_on:
+     - ipfs
+     - cluster
+
+volumes:
+  proxy_data:
+  cluster_data:
+  ipfs_data:
+  ipfs_staging:
